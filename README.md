@@ -4,10 +4,6 @@ Assume that player 1 scores `m` points in `n` games against players with an aver
 
 S(w,m,n) = {n choose m} w^m (1-w)^(n-m).
 
-Similarly, let `\bar{S}(w,m,n)` denote the probability of player 1 scoring `m` points or more in `n` games, given `w`. 
-
-\bar{S}(w,m,n) = \sum^{n}_{k=m} {n choose k} w^k (1-w)^(n-k).
-
 For a given threshold `t` in `[0,1]`, define the following maximization problem to find `w` that maximizes `S(w,m,n)`.
 
 maximize S(w,m,n) subject to S(w,m,n) <= t.
@@ -37,11 +33,18 @@ A* = R_a - 400 * log10((1 - w*) / w*).
 
 To illustrate the difference between TPR and PR^e, consider the example where player 1 has an average rating of 2700 and plays 2 games against players with an average rating of 2700. `S(w*,m,n)` shows the probability of scoring `m` points in `n` games given `w*`.
 
-For the score `m = 1` and `n = 2`, calculate the TPR and PR^e. For TPR, use the formula:
+For the given score `m = 1` and `n = 2`, I calculate the TPR and PR^e. For TPR, I use the standard formula and for PR^e, I use the W(A*,R_a) formula above. 
+Solving the following equation for TPR
 
 1/2 = 1 / (1 + 10^((2700 - TPR) / 400)),
 
+yields TPR = 2700. Now, calculate the PR^e. For `m=1` and `n=2`, we have `w* = 0.5`. Then, plugging 
+`w* = 0.5` and `R_a = 2700` into the formula for PR^e, we obtain PR^e = 2700.
 
-yielding TPR `=2700`. Now, calculate the PR^e. For `m=1` and `n=2`, we
+Next, calculate PR^e for `m=0` and `n=2`. (Note that TPR is undefined for `m=0` and `m=n`.) 
+For `m=0` and `n=2`, solving the optimization problem yields `w* = 0.29`. Then, plugging 
+`w* = 0.29` and `R_a = 2700` into the formula for PR^e, we obtain PR^e = 2546.89. The remaining values of 
+PR^e and TPR are calculated similarly.
+
 
 For the research paper, see: https://kclpure.kcl.ac.uk/portal/en/publications/performance-rating-in-chess-tennis-and-other-contexts
