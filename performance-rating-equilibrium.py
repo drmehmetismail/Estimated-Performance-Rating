@@ -203,9 +203,9 @@ def process_player_data(df, tournament_type, num_rounds):
     return player_data, iteration
 
 # Function to detect tournament type based on column headers
-def detect_tournament_type(df):
-    swiss_columns = [f'{i}.Rd' for i in range(1, 12)]
-    round_robin_columns = [str(i) for i in range(1, 11)]
+def detect_tournament_type(df, num_rounds):
+    swiss_columns = [f'{i}.Rd' for i in range(1, num_rounds + 1)]
+    round_robin_columns = [str(i) for i in range(1, num_rounds + 2)]
 
     if all(col in df.columns for col in swiss_columns):
         return 'Swiss'
@@ -218,14 +218,17 @@ def detect_tournament_type(df):
 def main(csv_file_path, num_rounds):
     # Read the CSV file
     df = pd.read_csv(csv_file_path)
-
+    
+    # Strip whitespace from 'Name' column
+    df['Name'] = df['Name'].str.strip()
+    
     # Ensure 'Rk.', 'Name', 'Rtg' columns exist
     required_columns = {'Rk.', 'Name', 'Rtg'}
     if not required_columns.issubset(df.columns):
         raise ValueError(f"CSV must contain the following columns: {required_columns}")
 
     # Detect tournament type
-    tournament_type = detect_tournament_type(df)
+    tournament_type = detect_tournament_type(df, num_rounds)
     # print(f"Tournament Type Detected: {tournament_type}")
 
     # Process player data with iterative PR calculations until convergence
