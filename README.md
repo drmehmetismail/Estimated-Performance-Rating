@@ -1,4 +1,5 @@
-# Estimated Performance Rating
+# Estimated Performance Rating, and Performance Rating Equilibrium
+## Estimated Performance Rating
 
 Assume that player 1 scores `m` points in `n` games against players with an average rating `R_a`, where `m` is an integer. Note that in chess, a win is worth 1 point, a draw 0.5 points, and a loss 0 points. Let `S(w,m,n)` denote the player 1's **probability of scoring** exactly `m` points in `n` games, given player 1's win probability `w` against players with an average rating `R_a`. 
 
@@ -21,7 +22,7 @@ Solving Equation for `A*`we obtain:
 A* = R_a - 400 * log10((1 - w*) / w*).
 
 
-## Illustrative Example
+### Illustrative Example
 
 | `R_a` | `m` | `n` | `w*` | `S(w*,m,n)` | **PR^e** | **TPR** |
 |-------|-----|-----|------|-------------|----------|---------|
@@ -46,5 +47,15 @@ For `m=0` and `n=2`, solving the optimization problem yields `w* = 0.29`. Then, 
 `w* = 0.29` and `R_a = 2700` into the formula for PR^e, we obtain PR^e = 2546.89. The remaining values of 
 PR^e and TPR are calculated similarly.
 
+## Complete Performance Rating
 
-For the research paper, see: https://kclpure.kcl.ac.uk/portal/en/publications/performance-rating-in-chess-tennis-and-other-contexts
+For situations where a computer is unavailable, I propose a second novel rating system: the Complete Performance Rating (CPR). The CPR is defined as the hypothetical rating R such that if the player were assigned this rating at the start of a tournament where she scored m points in n games, and additionally drew a game against an opponent with a rating R, the player’s initial rating R would remain unchanged. The CPR makes use of the fact that drawing a game against an opponent with the same rating does not change a player’s rating.
+
+## Performance Rating Equilibrium
+
+Performance Rating Equilibrium (PRE) is a sequence of hypothetical ratings r_i for every player i in a tournament such that after scoring m_i points in n rounds, every player's initial rating r_i remains unchanged. PRE is the fixed point of the 'ratings' mapping. Numerically, the PRE can be calculated iteratively starting from the initial ratings and updating initial ratings after each iteration.
+
+For the research papers, see: 
+https://kclpure.kcl.ac.uk/portal/en/publications/performance-rating-in-chess-tennis-and-other-contexts
+and
+https://kclpure.kcl.ac.uk/portal/en/publications/performance-rating-equilibrium
