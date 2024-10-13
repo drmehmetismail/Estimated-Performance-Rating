@@ -215,7 +215,7 @@ def detect_tournament_type(df, num_rounds):
         raise ValueError("Cannot determine tournament type based on column headers")
 
 # Main function to read CSV, process data, and export PRs
-def main(csv_file_path, num_rounds):
+def main_pre(csv_file_path, num_rounds):
     # Read the CSV file
     df = pd.read_csv(csv_file_path)
     
@@ -265,4 +265,4 @@ if __name__ == "__main__":
     csv_file_path = ''
     # Enter the number of rounds in the tournament
     num_rounds = 9
-    main(csv_file_path, num_rounds)
+    main_pre(csv_file_path, num_rounds)
