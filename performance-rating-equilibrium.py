@@ -261,8 +261,8 @@ def main(csv_file_path, num_rounds):
     print(export_df)
 
 if __name__ == "__main__":
-    # Enter the path to the CSV file. See the attached example for the format.
+    # Enter the path to the CSV file. See the attached example (GrandSwissPalma2017.csv) for the format.
     csv_file_path = ''
     # Enter the number of rounds in the tournament
-    num_rounds = 11
+    num_rounds = 9
     main(csv_file_path, num_rounds)
