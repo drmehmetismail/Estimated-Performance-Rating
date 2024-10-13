@@ -2,6 +2,7 @@ from pr_calculator import (calculate_win_probability, adjust_mn, optimize_w, cal
                             calculate_score_probability, calculate_TPR, 
                             calculate_score_plus_probability, optimize_w_plus, calculate_FPR)
 from calculate_cpr import calculate_cpr
+from performance_rating_equilibrium import main_pre
 
 def main():
     B = 2705 # Average rating of the opponents 2480, 3094
@@ -22,6 +23,11 @@ def main():
     FPR = calculate_FPR(m, n, B)
     FIDE_score_probability = calculate_score_probability(0.99, m, n)
 
+    # For Performance Rating Equilibrium (PRE) set csv_file_path and num_rounds
+    # csv_file_path = '.../GrandSwissPalma2017.csv'
+    # num_rounds = 9
+    # main_pre(csv_file_path, num_rounds)
+  
     # w_star_plus = optimize_w_plus(m, n, t)
     # EPR_plus = calculate_EPR(w_star_plus, B)
     # score_plus_optimized_probability = calculate_score_plus_probability(w_star_plus, m, n)
