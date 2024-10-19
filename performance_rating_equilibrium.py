@@ -24,19 +24,25 @@ def expected_score(opponent_ratings, own_rating):
 # performance rating formula
 def performance_rating(opponent_ratings, score):
     opponent_ratings = [r for r in opponent_ratings if r is not None]
+    
     if not opponent_ratings:
         # Cannot compute performance rating without opponent ratings
         return None
-    try:
-        result = root_scalar(
-            lambda r: expected_score(opponent_ratings, r) - score,
-            bracket=[0, 4500],
-            method='brentq'
-        )
-        return round(result.root, 1) if result.converged else None
-    except (ValueError, TypeError) as e:
-        # Handle cases where the root-finding algorithm fails
-        return None
+    
+    # if score is 0 or perfect score, then ask CPR
+    if score == 0 or score == len(opponent_ratings):
+        return round(complete_performance_rating(opponent_ratings, score), 1)
+    else:
+        try:
+            result = root_scalar(
+                lambda r: expected_score(opponent_ratings, r) - score,
+                bracket=[1000, 4000],
+                method='brentq'
+            )
+            return round(result.root, 1) if result.converged else None
+        except (ValueError, TypeError) as e:
+            # Handle cases where the root-finding algorithm fails
+            return None
 
 # linear performance rating
 def linear_performance_rating(opponent_ratings, score):
@@ -44,7 +50,13 @@ def linear_performance_rating(opponent_ratings, score):
     sum_term = np.sum(opponent_ratings)
     k = len(opponent_ratings)
     return sum_term / (k) + 800*(score/(k)) - 400
-        
+
+def complete_performance_rating(opponent_ratings, score):
+    sum_term = np.sum(opponent_ratings)
+    k = len(opponent_ratings)
+    average_opponent_rating = sum_term / k
+    return average_opponent_rating - ((k+1)/k) * 400 * math.log10((k + 0.5 - score) / (score + 0.5))
+
 def process_pgn_files(pgn_input_dir):
     player_data = {}
     player_indices = {}
