@@ -223,7 +223,7 @@ def process_player_data(player_data, average_rating, performance_rating_type):
         if not converged:
             iteration += 1
 
-    return player_data, iteration
+    return player_data
 
 # Main function to read PGN, process data, and export
 def main_pre(pgn_input_dir, performance_rating_type):
@@ -231,7 +231,7 @@ def main_pre(pgn_input_dir, performance_rating_type):
     player_data, average_rating = process_pgn_files(pgn_input_dir)
 
     # Process player data with iterative PR calculations until convergence
-    player_data, total_iterations = process_player_data(player_data, average_rating, performance_rating_type)
+    player_data = process_player_data(player_data, average_rating, performance_rating_type)
 
     # Prepare data for CSV export
     export_data = []
@@ -260,7 +260,7 @@ def main_pre(pgn_input_dir, performance_rating_type):
     print(export_df)
 
 if __name__ == "__main__":
-    # performance_rating_type: input 'linear' or 'standard'. For very big tournaments use linear as it's much faster.
+    # performance_rating_type: input 'linear' or 'standard'. If it takes more than several minutes switch to linear as it's much faster.
     performance_rating_type = 'standard'
     pgn_input_dir = ''
     main_pre(pgn_input_dir, performance_rating_type)
