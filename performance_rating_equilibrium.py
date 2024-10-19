@@ -157,7 +157,7 @@ def process_pgn_files(pgn_input_dir):
 
     return player_data, average_rating
 
-def process_player_data(player_data, average_rating):
+def process_player_data(player_data, average_rating, performance_rating_type):
     # Remove players with no games
     player_data = {player: data for player, data in player_data.items() if len(data['opponents']) > 0}
 
@@ -219,7 +219,7 @@ def main_pre(pgn_input_dir, performance_rating_type):
     player_data, average_rating = process_pgn_files(pgn_input_dir)
 
     # Process player data with iterative PR calculations until convergence
-    player_data, total_iterations = process_player_data(player_data, average_rating)
+    player_data, total_iterations = process_player_data(player_data, average_rating, performance_rating_type)
 
     # Prepare data for CSV export
     export_data = []
