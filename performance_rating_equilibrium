@@ -8,150 +8,158 @@ updating initial ratings after each iteration.
 """
 
 import pandas as pd
-import re
+import numpy as np
 from scipy.optimize import root_scalar
-
-# Function to parse round results for Swiss tournaments
-def parse_swiss_round_result(round_entry):
-    if isinstance(round_entry, str):
-        try:
-            # Match pattern: opponent number, result
-            match = re.match(r'^(\d+)([wb])([01½])$', round_entry.strip())
-            if match:
-                opponent_num = int(match.group(1))
-                result_part = match.group(3)
-
-                # Determine the result
-                if result_part == '½':
-                    result = 0.5
-                elif result_part == '1':
-                    result = 1.0
-                elif result_part == '0':
-                    result = 0.0
-                else:
-                    result = None
-
-                return opponent_num, result
-            else:
-                return None, None
-        except:
-            pass
-    return None, None
-
-# Function to parse round results for (single) Round-robin tournaments
-def parse_round_robin_result(round_entry):
-    if isinstance(round_entry, str):
-        round_entry = round_entry.strip()
-        if round_entry == '*' or round_entry == '':
-            return None, None  # No game played or bye
-        elif round_entry == '½':
-            return 'draw', 0.5
-        elif round_entry == '1':
-            return 'win', 1.0
-        elif round_entry == '0':
-            return 'loss', 0.0
-    return None, None
-
-# Function to get opponent info for Swiss tournaments
-def get_opponent_info_swiss(row, df, num_rounds):
-    opponents = []
-    results = []
-    opponent_ratings = []
-    opponent_nums = []  # Store opponent numbers for future reference
-
-    for i in range(1, num_rounds + 1):
-        round_col = f'{i}.Rd'
-        round_entry = row.get(round_col, '*')
-        opponent_num, result = parse_swiss_round_result(round_entry)
-        if opponent_num is None or result is None:
-            continue  # Skip if no game played or invalid format
-
-        # Find the opponent's row based on rank (assuming 'Rk.' is the rank)
-        opponent_row = df[df['Rk.'] == opponent_num]
-        if not opponent_row.empty:
-            opponent_name = opponent_row['Name'].values[0]
-            opponent_rating = opponent_row['Rtg'].values[0]
-
-            opponents.append(opponent_name)
-            results.append(result)
-            opponent_ratings.append(opponent_rating)
-            opponent_nums.append(opponent_num)
-
-    return opponents, results, opponent_ratings, opponent_nums
-
-# Function to get opponent info for Round-robin tournaments
-def get_opponent_info_round_robin(row, df, num_rounds):
-    opponents = []
-    results = []
-    opponent_ratings = []
-    opponent_nums = []  # Store opponent numbers for future reference
-
-    player_rk = row['Rk.']
-
-    for i in range(1, num_rounds + 1):
-        round_col = f'{i}'
-        round_entry = row.get(round_col, '*')
-        
-        if i == player_rk:
-            continue  # Skip self
-
-        opponent_row = df[df['Rk.'] == i]
-        if opponent_row.empty:
-            continue  # Opponent not found
-
-        opponent_name = opponent_row['Name'].values[0]
-        opponent_rating = opponent_row['Rtg'].values[0]
-        opponent_num = opponent_row['Rk.'].values[0]
-
-        outcome, result = parse_round_robin_result(round_entry)
-        if outcome is None or result is None:
-            continue  # Skip if no game played or invalid format
-
-        opponents.append(opponent_name)
-        results.append(result)
-        opponent_ratings.append(opponent_rating)
-        opponent_nums.append(opponent_num)
-
-    return opponents, results, opponent_ratings, opponent_nums
+import os
+import chess.pgn
 
 def expected_score(opponent_ratings, own_rating):
+    # Filter out None values from opponent_ratings
+    opponent_ratings = [r for r in opponent_ratings if r is not None]
+    if own_rating is None or not opponent_ratings:
+        # Cannot compute expected score without own_rating or opponent_ratings
+        return None
     return sum(1 / (1 + 10 ** ((r - own_rating) / 400)) for r in opponent_ratings)
 
+# performance rating formula
 def performance_rating(opponent_ratings, score):
-    result = root_scalar(lambda r: expected_score(opponent_ratings, r) - score, bracket=[0, 4000], method='brentq')
-    return round(result.root,1) if result.converged else None
+    opponent_ratings = [r for r in opponent_ratings if r is not None]
+    if not opponent_ratings:
+        # Cannot compute performance rating without opponent ratings
+        return None
+    try:
+        result = root_scalar(
+            lambda r: expected_score(opponent_ratings, r) - score,
+            bracket=[0, 4500],
+            method='brentq'
+        )
+        return round(result.root, 1) if result.converged else None
+    except (ValueError, TypeError) as e:
+        # Handle cases where the root-finding algorithm fails
+        return None
 
-# Function to process each player's data based on tournament type
-def process_player_data(df, tournament_type, num_rounds):
+# linear performance rating
+def linear_performance_rating(opponent_ratings, score):
+    # Calculate the average ratings of the opponents for i, sum x_j's for j != i
+    sum_term = np.sum(opponent_ratings)
+    k = len(opponent_ratings)
+    return sum_term / (k) + 800*(score/(k)) - 400
+        
+def process_pgn_files(pgn_input_dir):
     player_data = {}
+    player_indices = {}
+    player_counter = 1  # To assign unique numbers to players
+    all_ratings = []
 
-    if tournament_type == 'Swiss':
-        get_opponent_info = lambda row: get_opponent_info_swiss(row, df, num_rounds)
-    elif tournament_type == 'Round-robin':
-        get_opponent_info = lambda row: get_opponent_info_round_robin(row, df, num_rounds)
-    else:
-        raise ValueError("Unsupported tournament type")
+    for dirpath, dirnames, filenames in os.walk(pgn_input_dir):
+        for filename in filenames:
+            if filename.endswith('.pgn'):
+                pgn_file_path = os.path.join(dirpath, filename)
+                with open(pgn_file_path) as pgn:
+                    while True:
+                        game = chess.pgn.read_game(pgn)
+                        if game is None:
+                            break
+                        # Get the headers of the game
+                        white_player = game.headers.get('White', 'Unknown')
+                        black_player = game.headers.get('Black', 'Unknown')
+                        result_str = game.headers.get('Result', '*')
+                        white_rating = game.headers.get('WhiteElo', '0')
+                        black_rating = game.headers.get('BlackElo', '0')
+                        
+                        # Convert ratings to int
+                        try:
+                            white_rating = int(white_rating)
+                        except:
+                            white_rating = 0
+                        try:
+                            black_rating = int(black_rating)
+                        except:
+                            black_rating = 0
 
-    # Initialize player_data with initial opponent info and ratings
-    for index, row in df.iterrows():
-        player_name = row['Name']
-        player_rating = row['Rtg']
+                        # Collect valid ratings
+                        if white_rating > 0:
+                            all_ratings.append(white_rating)
+                        if black_rating > 0:
+                            all_ratings.append(black_rating)
 
-        opponents, results, opponent_ratings, opponent_nums = get_opponent_info(row)
+                        # Convert result string to numeric results
+                        if result_str == '1-0':
+                            white_result = 1.0
+                            black_result = 0.0
+                        elif result_str == '0-1':
+                            white_result = 0.0
+                            black_result = 1.0
+                        elif result_str == '1/2-1/2' or result_str == '½-½':
+                            white_result = 0.5
+                            black_result = 0.5
+                        else:
+                            # In case of unknown result
+                            continue
 
-        player_dict = {
-            'Rk.': row['Rk.'],
-            'Name': player_name,
-            'Rtg': player_rating,
-            'Pts.': sum(results),
-            'opponents': opponents,
-            'results': results,
-            'opponent_ratings': opponent_ratings,
-            'opponent_nums': opponent_nums,  # Store opponent numbers
-            'PRs': []  # List to store PRs for each iteration
-        }
+                        # Assign unique numbers to players if not already assigned
+                        if white_player not in player_indices:
+                            player_indices[white_player] = player_counter
+                            player_counter += 1
+                        if black_player not in player_indices:
+                            player_indices[black_player] = player_counter
+                            player_counter += 1
 
-        player_data[player_name] = player_dict
+                        # Update white player's data
+                        if white_player not in player_data:
+                            player_data[white_player] = {
+                                'Rank': player_indices[white_player],
+                                'Name': white_player,
+                                'Rating': white_rating,
+                                'Points': 0.0,
+                                'opponents': [],
+                                'results': [],
+                                'opponent_ratings': [],
+                                'opponent_nums': [],
+                                'PRs': []  # For storing PRs in iterations
+                            }
+                        player_data[white_player]['Points'] += white_result
+                        player_data[white_player]['opponents'].append(black_player)
+                        player_data[white_player]['results'].append(white_result)
+                        player_data[white_player]['opponent_ratings'].append(black_rating)
+                        player_data[white_player]['opponent_nums'].append(player_indices[black_player])
+
+                        # Update black player's data
+                        if black_player not in player_data:
+                            player_data[black_player] = {
+                                'Rank': player_indices[black_player],
+                                'Name': black_player,
+                                'Rating': black_rating,
+                                'Points': 0.0,
+                                'opponents': [],
+                                'results': [],
+                                'opponent_ratings': [],
+                                'opponent_nums': [],
+                                'PRs': []
+                            }
+                        player_data[black_player]['Points'] += black_result
+                        player_data[black_player]['opponents'].append(white_player)
+                        player_data[black_player]['results'].append(black_result)
+                        player_data[black_player]['opponent_ratings'].append(white_rating)
+                        player_data[black_player]['opponent_nums'].append(player_indices[white_player])
+
+    # After processing all games, compute average rating
+    average_rating = int(sum(all_ratings) / len(all_ratings)) if all_ratings else 0
+
+    # Now, set missing or None ratings to average_rating
+    for player in player_data:
+        if not player_data[player]['Rating'] or player_data[player]['Rating'] == 0:
+            player_data[player]['Rating'] = average_rating
+        # Update opponent ratings where ratings are zero or None
+        player_data[player]['opponent_ratings'] = [
+            rating if rating else average_rating for rating in player_data[player]['opponent_ratings']
+        ]
+
+    return player_data, average_rating
+
+def process_player_data(player_data, average_rating):
+    # Remove players with no games
+    player_data = {player: data for player, data in player_data.items() if len(data['opponents']) > 0}
 
     converged = False
     iteration = 1
@@ -160,31 +168,32 @@ def process_player_data(df, tournament_type, num_rounds):
         # Create a mapping from player names to their PRs
         if iteration == 1:
             # First iteration uses initial ratings
-            pr_map = {player: data['Rtg'] for player, data in player_data.items()}
+            pr_map = {player: data['Rating'] for player, data in player_data.items()}
         else:
             # Subsequent iterations use the previous iteration's PRs
-            pr_map = {player: data['PRs'][-1] for player, data in player_data.items()}
+            pr_map = {player: data['PRs'][-1] if data['PRs'][-1] is not None else data['Rating']
+                      for player, data in player_data.items()}
 
         converged = True  # Assume convergence, check if any PR changes
 
         # Recalculate PRs for each player
         for player, data in player_data.items():
             opponent_ratings = []
-            for opp_num in data['opponent_nums']:
-                # Find opponent by rank
-                opponent_row = df[df['Rk.'] == opp_num]
-                if not opponent_row.empty:
-                    opponent_name = opponent_row['Name'].values[0]
-                    opponent_pr = pr_map.get(opponent_name, data['Rtg'])  # Default to initial rating if not found
-                    opponent_ratings.append(opponent_pr)
-                else:
-                    opponent_ratings.append(data['Rtg'])  # Default to player's own rating if opponent not found
+            for opp_name in data['opponents']:
+                # Get opponent's PR or fallback to their initial rating
+                opponent_pr = pr_map.get(opp_name, player_data[opp_name]['Rating'])
+                if opponent_pr is None:
+                    # If still None, use average_rating
+                    opponent_pr = average_rating
+                opponent_ratings.append(opponent_pr)
 
             m = sum(data['results'])  # Total score
-            n = len(data['results'])  # Number of games
 
             # Calculate new PR
-            new_pr = performance_rating(opponent_ratings, m)
+            if performance_rating_type == 'linear':
+                new_pr = linear_performance_rating(opponent_ratings, m)
+            else:
+                new_pr = performance_rating(opponent_ratings, m)
 
             # Check for convergence
             if iteration == 1:
@@ -194,7 +203,9 @@ def process_player_data(df, tournament_type, num_rounds):
             else:
                 previous_pr = data['PRs'][-1]
                 data['PRs'].append(new_pr)
-                if round(new_pr) != round(previous_pr):
+                if new_pr is None or previous_pr is None:
+                    converged = False
+                elif round(new_pr) != round(previous_pr):
                     converged = False  # PR changed, so not yet converged
 
         if not converged:
@@ -202,67 +213,42 @@ def process_player_data(df, tournament_type, num_rounds):
 
     return player_data, iteration
 
-# Function to detect tournament type based on column headers
-def detect_tournament_type(df, num_rounds):
-    swiss_columns = [f'{i}.Rd' for i in range(1, num_rounds + 1)]
-    round_robin_columns = [str(i) for i in range(1, num_rounds + 2)]
-
-    if all(col in df.columns for col in swiss_columns):
-        return 'Swiss'
-    elif all(col in df.columns for col in round_robin_columns):
-        return 'Round-robin'
-    else:
-        raise ValueError("Cannot determine tournament type based on column headers")
-
-# Main function to read CSV, process data, and export PRs
-def main_pre(csv_file_path, num_rounds):
-    # Read the CSV file
-    df = pd.read_csv(csv_file_path)
-    
-    # Strip whitespace from 'Name' column
-    df['Name'] = df['Name'].str.strip()
-    
-    # Ensure 'Rk.', 'Name', 'Rtg' columns exist
-    required_columns = {'Rk.', 'Name', 'Rtg'}
-    if not required_columns.issubset(df.columns):
-        raise ValueError(f"CSV must contain the following columns: {required_columns}")
-
-    # Detect tournament type
-    tournament_type = detect_tournament_type(df, num_rounds)
-    # print(f"Tournament Type Detected: {tournament_type}")
+# Main function to read PGN, process data, and export
+def main_pre(pgn_input_dir, performance_rating_type):
+    # Process PGN files
+    player_data, average_rating = process_pgn_files(pgn_input_dir)
 
     # Process player data with iterative PR calculations until convergence
-    player_data, total_iterations = process_player_data(df, tournament_type, num_rounds)
+    player_data, total_iterations = process_player_data(player_data, average_rating)
 
     # Prepare data for CSV export
     export_data = []
     for player, data in player_data.items():
         row = {
-            'Rk.': data['Rk.'],
+            'Rank': data['Rank'],
             'Name': player,
-            'Rtg': data['Rtg'],
-            'Pts.': data['Pts.'],
-            'PRE': round(data['PRs'][-1]),  # Final PRE after convergence
+            'Rating': data['Rating'],
+            'Points': data['Points'],
+            'TPR': round(data['PRs'][0]),
+            'PRE': round(data['PRs'][-1]),
         }
         export_data.append(row)
 
     # Convert to DataFrame
     export_df = pd.DataFrame(export_data)
 
-    # Sort by rank
-    export_df.sort_values('Rk.', inplace=True)
+    # Sort by Points
+    export_df = export_df.sort_values(by='Points', ascending=False)
 
     # Export to CSV
-    output_csv_path = 'pre_results.csv'
+    output_csv_path = 'performance_rating_equilibrium.csv'
     export_df.to_csv(output_csv_path, index=False)
-    # print(f"Exported PR results to {output_csv_path}")
 
     # Print the DataFrame
     print(export_df)
 
 if __name__ == "__main__":
-    # Enter the path to the CSV file. See the attached example (GrandSwissPalma2017.csv) for the format.
-    csv_file_path = ''
-    # Enter the number of rounds in the tournament
-    num_rounds = 9
-    main_pre(csv_file_path, num_rounds)
+    # performance_rating_type: input 'linear' or 'standard'. For very big tournaments use linear as it's much faster.
+    performance_rating_type = 'standard'
+    pgn_input_dir = ''
+    main_pre(pgn_input_dir, performance_rating_type)
