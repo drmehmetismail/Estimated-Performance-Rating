@@ -55,7 +55,7 @@ For situations where a computer is unavailable, I propose a second novel rating 
 
 Performance Rating Equilibrium (PRE) is a sequence of hypothetical ratings r_i for every player i in a tournament such that after scoring m_i points in n rounds, every player's initial rating r_i remains unchanged. PRE is the fixed point of the 'ratings' mapping. Numerically, the PRE can be calculated iteratively starting from the initial ratings and updating initial ratings after each iteration.
 
-For example, in the 2017 FIDE Grand Swiss Palma de Mallorca, Jakovenko was ranked 1st according to the TPR tiebreak, but Aronian's PRE was higher because his opponents performed better in the tournament. For similar reasons, Nakamura's and Svidler's PREs are also noticeably higher than their TPRs.
+For example, in the 2017 FIDE Grand Prix Palma de Mallorca, Jakovenko was ranked 1st according to the TPR tiebreak, but Aronian's PRE was higher because his opponents performed better in the tournament. For similar reasons, Nakamura's and Svidler's PREs are also noticeably higher than their TPRs.
 
 | Rk. | Name                   | Rtg  | Pts. | TPR  | PRE  |
 | --- | ---------------------- | ---- | ---- | ---- | ---- |
@@ -78,6 +78,7 @@ For example, in the 2017 FIDE Grand Swiss Palma de Mallorca, Jakovenko was ranke
 | 17  | Gelfand Boris          | 2719 | 3    | 2580 | 2555 |
 | 18  | Hammer Jon Ludvig      | 2629 | 3    | 2586 | 2562 |
 
+For more details of PRE, see https://github.com/drmehmetismail/Perfect-Performance-Ratings
 For the research papers, see: 
 https://kclpure.kcl.ac.uk/portal/en/publications/performance-rating-in-chess-tennis-and-other-contexts
 and
