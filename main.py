@@ -1,7 +1,7 @@
 from pr_calculator import (calculate_win_probability, adjust_mn, optimize_w, calculate_EPR, 
                             calculate_score_probability, calculate_TPR, 
                             calculate_score_plus_probability, optimize_w_plus, calculate_FPR)
-from calculate_cpr import calculate_cpr
+from calculate_cpr import calculate_cpr, perfect_score_pr
 from performance_rating_equilibrium import main_pre
 
 def main():
@@ -42,17 +42,13 @@ def main():
     print(f"Tournament Performance Rating (TPR): {TPR}")
     print("FIDE Performance Rating: ", FPR)
     print("--------------------")
-    # Advanced options
-    # print(f"Threshold: {t}")
-    # print(f"w_star: {w_star}")
-    # print(f"Optimized probability of scoring {m} points: {score_optimized_probability}")
-    # print("FIDE score probability: ", FIDE_score_probability)
-    # print("--------------------")
-    # calculate_score_probability w_star, m, n
-    # print(f"Score Probability: {calculate_score_probability(w, m, n)}")
-    # print(f"w_star_plus: {w_star_plus}")
-    # print(f"EPR_plus: {EPR_plus}")
-    # print(f"Optimized probability of scoring {m} points or more: {score_plus_optimized_probability}")
+    # To calculate Perfect Score Performance Rating (PSPR), enter the opponent ratings
+    Carlsen_opponent_ratings = [2718, 2657, 2684, 2692, 2227, 2501, 2640, 2633, 2513]
+    Fischer_opponent_ratings = [2628, 2643, 2648, 2678, 2531, 2608, 2579, 2530, 2565, 2501, 2607]
+    # Example usage for PSPR
+    opponent_ratings = Carlsen_opponent_ratings
+    best_cpr = perfect_score_pr(opponent_ratings)
+    print(f"Perfect score Performance Rating against opponents in {opponent_ratings}: {best_cpr:.0f}")
 
 
 if __name__ == "__main__":
